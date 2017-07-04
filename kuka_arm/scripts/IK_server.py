@@ -23,12 +23,14 @@ q1, q2, q3, q4, q5, q6, q7 = symbols('q1:8') # theta_i
 d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8')
 a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7')
 alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7')
-r, p, y = symbols('r p y') # row pitch yaw
+roll, pitch, yaw = symbols('roll pitch yaw') # row pitch yaw
 
 # Homogeneous RPY rotation between base_link and gripper_link
-Rrpy = Matrix([[ cos(r)*cos(p), cos(r)*sin(p)*sin(y) - sin(r)*cos(y), cos(r)*sin(p)*cos(y) + sin(r)*sin(y)],
-               [ sin(r)*cos(p), sin(r)*sin(p)*sin(y)+cos(r)*cos(y), sin(r)*sin(p)],
-               [ -sin(p), cos(p)*sin(y),  cos(p)*cos(y)]])
+Rrpy = Matrix([
+[cos(pitch)*cos(yaw), sin(pitch)*sin(roll)*cos(yaw) - sin(yaw)*cos(roll), sin(pitch)*cos(roll)*cos(yaw) + sin(roll)*sin(yaw)],
+[sin(yaw)*cos(pitch), sin(pitch)*sin(roll)*sin(yaw) + cos(roll)*cos(yaw), sin(pitch)*sin(yaw)*cos(roll) - sin(roll)*cos(yaw)],
+[        -sin(pitch),                               sin(roll)*cos(pitch),                               cos(pitch)*cos(roll)]])
+
 # Modified DH params
 s = {alpha0: 0,      a0:   0,      d1: 0.75,
     alpha1: -pi/2,  a1: 0.35,     d2: 0,      q2: q2-pi/2,
@@ -102,6 +104,8 @@ R_y = Matrix([[cos(-pi/2), 0, sin(-pi/2), 0],
 
 R_corr = simplify(R_z * R_y)
 
+# Correction Rrpy
+Rrpy = Rrpy * R_corr[:3, :3]
 T_total = simplify(T6_G * R_corr)
 
 def handle_calculate_IK(req):
@@ -128,7 +132,7 @@ def handle_calculate_IK(req):
                 [req.poses[x].orientation.x, req.poses[x].orientation.y,
                     req.poses[x].orientation.z, req.poses[x].orientation.w])
 
-            # Calculate joint angles using Geometric IK method
+            # Calculate waist center
             lx = cos(roll) * cos(pitch)
             ly = sin(roll) * cos(pitch)
             lz = -sin(pitch)
@@ -145,17 +149,12 @@ def handle_calculate_IK(req):
             theta3 = -acos((3.8125 - l_2)/3.75) + atan2(1.5, 0.054) #cos law
 
             # Rotation matrix from 3 to 6
-            R3_6 = Transpose(R0_3.evalf(subs={q1:theta1, q2:theta2, q3:theta3})) * Rrpy.evalf(subs={r:roll, p:pitch, y:yaw})
+            R3_6 = Transpose(R0_3.evalf(subs={q1:theta1, q2:theta2, q3:theta3})) * Rrpy.evalf(subs={roll:roll, pitch:pitch, yaw:yaw})
 
-            r31 = R3_6[2,0]
-            r11 = R3_6[0,0]
-            r21 = R3_6[1,0]
-            r32 = R3_6[2,1]
-            r33 = R3_6[2,2]
             # Euler Angles from Rotation Matrix
-            theta4  = atan2(-r31, sqrt(r11 * r11 + r21 * r21))
-            theta5 = atan2(r32, r33)
-            theta6 = atan2(r21, r11)
+            theta4  = theta4 = atan2(R3_6[2,2], -R3_6[0,2])
+            theta5 = acos(R3_6[1,2])
+            theta6 = atan2(-R3_6[1,1], R3_6[1,0])
             # Populate response for the IK request
             # In the next line replace theta1,theta2...,theta6 by your joint angle variables
             joint_trajectory_point.positions = [theta1, theta2, theta3, theta4, theta5, theta6]
