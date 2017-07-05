@@ -17,7 +17,7 @@
 [//]: # (Image References)
 
 [image1]: ./misc_images/misc1.png
-[image2]: ./misc_images/misc2.jpg
+[image2]: ./misc_images/misc2.JPG
  
 
 ---
