@@ -116,7 +116,7 @@ def handle_calculate_IK(req):
     else:
         # Initialize service response
         joint_trajectory_list = []
-        l = 0.303 # end-effector length
+        l_end_effector = 0.303 # end-effector length
         for x in xrange(0, len(req.poses)):
             # IK code starts here
             joint_trajectory_point = JointTrajectoryPoint()
@@ -128,20 +128,22 @@ def handle_calculate_IK(req):
             py = req.poses[x].position.y
             pz = req.poses[x].position.z
 
-            (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
+            # r,p,y to avoid name confliction
+            (r, p, y) = tf.transformations.euler_from_quaternion(
                 [req.poses[x].orientation.x, req.poses[x].orientation.y,
                     req.poses[x].orientation.z, req.poses[x].orientation.w])
 
             # Calculate waist center
-            lx = cos(roll) * cos(pitch)
-            ly = sin(roll) * cos(pitch)
-            lz = -sin(pitch)
+            lx = cos(r) * cos(p)
+            ly = sin(r) * cos(p)
+            lz = -sin(p)
 
-            wx = px - l * lx
-            wy = py - l * ly
-            wz = pz - l * lz
+            wx = px - l_end_effector * lx
+            wy = py - l_end_effector * ly
+            wz = pz - l_end_effector * lz
 
             l_2 = pow((sqrt(wx*wx + wy*wy) - 0.35),2) + pow((wz- 0.75), 2)
+            if l_2 < 1e-4: l2 = 1e-4 #deal with singularity
             l = sqrt(l_2) # length of one triangle side
 
             theta1 = atan2(wy, wx)
@@ -149,10 +151,10 @@ def handle_calculate_IK(req):
             theta3 = -acos((3.8125 - l_2)/3.75) + atan2(1.5, 0.054) #cos law
 
             # Rotation matrix from 3 to 6
-            R3_6 = Transpose(R0_3.evalf(subs={q1:theta1, q2:theta2, q3:theta3})) * Rrpy.evalf(subs={roll:roll, pitch:pitch, yaw:yaw})
+            R3_6 = Transpose(R0_3.evalf(subs={q1:theta1, q2:theta2, q3:theta3})) * Rrpy.evalf(subs={roll:r, pitch:p, yaw:y})
 
             # Euler Angles from Rotation Matrix
-            theta4  = theta4 = atan2(R3_6[2,2], -R3_6[0,2])
+            theta4 = atan2(R3_6[2,2], -R3_6[0,2])
             theta5 = acos(R3_6[1,2])
             theta6 = atan2(-R3_6[1,1], R3_6[1,0])
             # Populate response for the IK request
