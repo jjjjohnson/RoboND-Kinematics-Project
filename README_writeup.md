@@ -42,6 +42,16 @@ i | alpha<sub>i-1</sub> | a<sub>i-1</sub> | d<sub>i</sub> | theta<sub>i-1</sub>
 5 | -pi/2 | 0 | 0 |q6
 6 | 0| 0  | 0.303 |0
 
+The transform between base_link and gripper_link is:
+
+```
+T0_G = T0_1*T1_2*T2_3*T3_4*T4_5*T5_6*T6_G =
+Matrix([
+[((sin(q1)*sin(q4) + sin(q2 + q3)*cos(q1)*cos(q4))*cos(q5) + sin(q5)*cos(q1)*cos(q2 + q3))*cos(q6) + (sin(q1)*cos(q4) - sin(q4)*sin(q2 + q3)*cos(q1))*sin(q6), -((sin(q1)*sin(q4) + sin(q2 + q3)*cos(q1)*cos(q4))*cos(q5) + sin(q5)*cos(q1)*cos(q2 + q3))*sin(q6) + (sin(q1)*cos(q4) - sin(q4)*sin(q2 + q3)*cos(q1))*cos(q6), -(sin(q1)*sin(q4) + sin(q2 + q3)*cos(q1)*cos(q4))*sin(q5) + cos(q1)*cos(q5)*cos(q2 + q3), -0.303*(sin(q1)*sin(q4) + sin(q2 + q3)*cos(q1)*cos(q4))*sin(q5) + (1.25*sin(q2) - 0.054*sin(q2 + q3) + 1.5*cos(q2 + q3) + 0.35)*cos(q1) + 0.303*cos(q1)*cos(q5)*cos(q2 + q3)],
+[((sin(q1)*sin(q2 + q3)*cos(q4) - sin(q4)*cos(q1))*cos(q5) + sin(q1)*sin(q5)*cos(q2 + q3))*cos(q6) - (sin(q1)*sin(q4)*sin(q2 + q3) + cos(q1)*cos(q4))*sin(q6), -((sin(q1)*sin(q2 + q3)*cos(q4) - sin(q4)*cos(q1))*cos(q5) + sin(q1)*sin(q5)*cos(q2 + q3))*sin(q6) - (sin(q1)*sin(q4)*sin(q2 + q3) + cos(q1)*cos(q4))*cos(q6), -(sin(q1)*sin(q2 + q3)*cos(q4) - sin(q4)*cos(q1))*sin(q5) + sin(q1)*cos(q5)*cos(q2 + q3), -0.303*(sin(q1)*sin(q2 + q3)*cos(q4) - sin(q4)*cos(q1))*sin(q5) + (1.25*sin(q2) - 0.054*sin(q2 + q3) + 1.5*cos(q2 + q3) + 0.35)*sin(q1) + 0.303*sin(q1)*cos(q5)*cos(q2 + q3)],
+[                                                               -(sin(q5)*sin(q2 + q3) - cos(q4)*cos(q5)*cos(q2 + q3))*cos(q6) - sin(q4)*sin(q6)*cos(q2 + q3),                                                                  (sin(q5)*sin(q2 + q3) - cos(q4)*cos(q5)*cos(q2 + q3))*sin(q6) - sin(q4)*cos(q6)*cos(q2 + q3),                                     -sin(q5)*cos(q4)*cos(q2 + q3) - sin(q2 + q3)*cos(q5),                                               -0.303*sin(q5)*cos(q4)*cos(q2 + q3) - 0.303*sin(q2 + q3)*cos(q5) - 1.5*sin(q2 + q3) + 1.25*cos(q2) - 0.054*cos(q2 + q3) + 0.75],
+[                                                                                                                                                           0,                                                                                                                                                             0,                                                                                        0,                                                                                                                                                                            1]])
+```
 #### 3. Decouple Inverse Kinematics problem into Inverse Position Kinematics and inverse Orientation Kinematics; doing so derive the equations to calculate all individual joint angles.
 I divide the joint angles into two groups: theta1,2,3(position of weist center(WC)) and theta3,4,5(orientation of grapper). 
 First, I need to know the position of WC:
@@ -97,7 +107,7 @@ theta6 = atan2(-R3_6[1,1], R3_6[1,0])
 
 
 I have filled in code based on the analysis above and when I was testing it, I found the robot arm could reach the desired position but the gripper is too loose to pick up the object, which I assume is beyond the IK_server.py. I would like to fix the bug if I know how to adjust the gripper joint.
-There are however one concern: I used `acos()` to calculate some joint angle. Since the cosin of same absolute value of positive or negative angle appears the same, the code just pick the positive one. If we really have to figure out which one to use, since we have multiple joints and each joint choice will affect other joints' angle. it makes the choice of angles more complicated. I think the thing we need to concern is the joint constrain. I would like to improve it more since I code just do the job naively not very smartly...
+There are however one concern: I used `acos()` to calculate some joint angle. Since the cosin of same absolute value of positive or negative angle appears the same, the code just pick the positive one. If we really have to figure out which one to use, since we have multiple joints and each joint choice will affect other joints' angle. it makes the choice of angles more complicated. I think the thing we need to concern is the joint constrain and pick the set of joint angle with the least delta (ie difference in angle)). I would like to improve it more since I code just do the job naively not very smartly...
 
 
 
